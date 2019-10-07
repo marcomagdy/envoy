@@ -17,6 +17,8 @@ Driver::Driver(const XRayConfiguration& config, Server::Instance& server) : xray
   // XRay segment name will be the combination of mesh name and the virtual node name.
   const auto vnode_name = std::getenv(ENV_APPMESH_NODE_NAME);
   if (vnode_name) {
+    // should be in the following format:
+    // mesh/{meshName}/virtualNode/{virtualNodeName}.
     const auto parts = StringUtil::splitToken(vnode_name, "/", false /*keep_empty_string*/);
     if (parts.size() >= 4) {
       span_name = absl::StrCat(parts[1], "/", parts[3]);
