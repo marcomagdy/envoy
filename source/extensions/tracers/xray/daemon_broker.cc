@@ -33,11 +33,18 @@ std::string createHeader(const std::string& format, uint32_t version) {
 
 DaemonBrokerImpl::DaemonBrokerImpl(const std::string& daemon_endpoint) {
   using Network::Utility;
+  auto& logger = Logger::Registry::getLog(Logger::Id::tracing);
+
   const auto address = Utility::parseInternetAddressAndPort(daemon_endpoint, false /*v6only*/);
   io_handle_ = address->socket(Network::Address::SocketType::Datagram);
-  ASSERT(io_handle_->fd() != -1);
+  if (io_handle_->fd() == -1) {
+    ENVOY_LOG_TO_LOGGER(logger, error, "Failed to acquire UDP socket to X-Ray daemon at - {}",
+                        daemon_endpoint);
+  }
   const auto result = address->connect(io_handle_->fd());
-  ASSERT(result.rc_ != -1);
+  if (result.rc_ == -1) {
+    ENVOY_LOG_TO_LOGGER(logger, error, "Failed to send X-Ray UDP packet to - {}", daemon_endpoint);
+  }
 }
 
 void DaemonBrokerImpl::send(const std::string& data) const {

@@ -51,7 +51,7 @@ std::string generateTraceId(Envoy::SystemTime point_in_time) {
   // unique id represented as 24 hexadecimal digits and no dashes
   uuid.erase(std::remove(uuid.begin(), uuid.end(), '-'), uuid.end());
   ASSERT(uuid.length() >= 24);
-  out += uuid.substr(uuid.length() - 24);
+  out += uuid.substr(0, 24);
   return out;
 }
 
