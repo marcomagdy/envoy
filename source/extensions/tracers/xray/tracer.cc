@@ -10,6 +10,7 @@
 #include "envoy/http/header_map.h"
 #include "envoy/network/listener.h"
 
+#include "common/common/assert.h"
 #include "common/common/fmt.h"
 #include "common/common/hex.h"
 #include "common/runtime/runtime_impl.h"
@@ -141,7 +142,7 @@ Tracing::SpanPtr Tracer::startSpan(const std::string& span_name, const std::stri
       break;
     case SamplingDecision::NotSampled:
       // should never get here. If the header has Sampled=0 then we never call startSpan().
-      ASSERT(false);
+      RELEASE_ASSERT(false, "X-Ray startSpan called despite HTTP header having sampled=0");
       break;
     default:
       break;
