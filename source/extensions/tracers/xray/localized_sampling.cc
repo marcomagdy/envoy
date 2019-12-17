@@ -25,7 +25,7 @@ constexpr auto UrlPathJsonKey = "url_path";
 namespace {
 void fail(absl::string_view msg) {
   auto& logger = Logger::Registry::getLog(Logger::Id::tracing);
-  ENVOY_LOG_TO_LOGGER(logger, error, "Failed to parse sampling rules - {}", msg);
+  ENVOY_LOG_TO_LOGGER(logger, error, "Failed to parse local sampling rules - {}", msg);
 }
 
 bool is_valid_rate(double n) { return n >= 0 && n <= 1.0; }

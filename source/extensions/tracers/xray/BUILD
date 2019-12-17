@@ -20,6 +20,7 @@ envoy_proto_library(
 envoy_cc_library(
     name = "xray_lib",
     srcs = [
+        "centralized_sampling.cc",
         "daemon_broker.cc",
         "localized_sampling.cc",
         "tracer.cc",
@@ -27,8 +28,10 @@ envoy_cc_library(
         "xray_tracer_impl.cc",
     ],
     hdrs = [
+        "centralized_sampling.h",
         "daemon_broker.h",
         "localized_sampling.h",
+        "poller.h",
         "reservoir.h",
         "sampling_strategy.h",
         "tracer.h",

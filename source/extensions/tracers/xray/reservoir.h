@@ -106,11 +106,10 @@ public:
    * information would be considered stale (i.e. needs to be fetched from the service). This is
    * different from the quota expiration date.
    */
-  void refresh(uint32_t new_quota, Envoy::SystemTime expires_at, Envoy::MonotonicTime stale_at) {
+  void refresh(uint32_t new_quota, Envoy::SystemTime expires_at) {
     Envoy::Thread::LockGuard lg(sync_);
     quota_ = new_quota;
     expires_at_ = expires_at;
-    stale_at_ = stale_at;
   }
 
   /**
@@ -121,17 +120,8 @@ public:
     return now >= expires_at_;
   }
 
-  /**
-   * Checks if the quota information in the reservoir is out of date.
-   */
-  bool isStale(Envoy::MonotonicTime now) const {
-    Envoy::Thread::LockGuard lg(sync_);
-    return now >= stale_at_;
-  }
-
 private:
   Envoy::SystemTime expires_at_;
-  Envoy::MonotonicTime stale_at_;
   bool can_borrow_;
 };
 
