@@ -46,7 +46,8 @@ XRayTracerFactory::createHttpTracerTyped(const trace::XRayConfig& proto_config,
   const std::string endpoint = fmt::format("{}:{}", proto_config.daemon_endpoint().address(),
                                            proto_config.daemon_endpoint().port_value());
 
-  XRayConfiguration xconfig{endpoint, proto_config.segment_name(), sampling_rules_json};
+  XRayConfiguration xconfig{endpoint, proto_config.segment_name(), sampling_rules_json,
+                            proto_config.collector_cluster()};
   auto xray_driver = std::make_unique<XRay::Driver>(xconfig, server);
 
   return std::make_unique<Tracing::HttpTracerImpl>(std::move(xray_driver), server.localInfo());

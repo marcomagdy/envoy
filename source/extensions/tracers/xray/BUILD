@@ -23,6 +23,7 @@ envoy_cc_library(
         "centralized_sampling.cc",
         "daemon_broker.cc",
         "localized_sampling.cc",
+        "poller.cc",
         "tracer.cc",
         "util.cc",
         "xray_tracer_impl.cc",

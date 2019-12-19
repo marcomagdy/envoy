@@ -32,4 +32,7 @@ message XRayConfig {
   // `X-Ray SDK documentation
   // <https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-go-configuration.html#xray-sdk-go-configuration-sampling>`_
   api.v3alpha.core.DataSource sampling_rule_manifest = 3;
+
+  // The cluster to use for fetching sampling rules from the X-Ray daemon
+  string collector_cluster = 4 [(validate.rules).string = {min_bytes: 1}];
 }

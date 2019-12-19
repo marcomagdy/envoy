@@ -13,6 +13,7 @@ struct XRayConfiguration {
   const std::string daemon_endpoint_;
   const std::string segment_name_;
   const std::string sampling_rules_;
+  const std::string collector_cluster_;
 };
 
 enum class SamplingDecision {

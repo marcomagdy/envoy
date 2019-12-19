@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "envoy/event/timer.h"
+#include "envoy/common/pure.h"
 #include "envoy/http/async_client.h"
 
 namespace Envoy {
@@ -12,18 +12,20 @@ namespace XRay {
 
 class Poller {
 public:
-  virtual void poll();
+  using PollCallback = std::function<void(const std::string&)>;
+  virtual void poll(const PollCallback& callback);
   virtual ~Poller() = default;
 };
 
-class SamplingRulesPoller : public Poller {
+class SamplingRulesPoller : public Poller, public Http::AsyncClient::Callbacks {
 public:
-  SamplingRulesPoller();
-  void poll() override;
+  explicit SamplingRulesPoller(const std::string& endpoint, Http::AsyncClient& http_client)
+      : endpoint_(endpoint), http_client_(http_client){};
+  void poll(const PollCallback& callback) override;
 
 private:
+  const std::string endpoint_;
   Http::AsyncClient& http_client_;
-  Event::TimerPtr flush_timer_;
 };
 
 using SamplingRulesPollerPtr = std::unique_ptr<SamplingRulesPoller>;

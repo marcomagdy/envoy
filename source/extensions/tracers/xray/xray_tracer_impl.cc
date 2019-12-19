@@ -1,5 +1,7 @@
 #include "extensions/tracers/xray/xray_tracer_impl.h"
 
+#include "envoy/event/timer.h"
+
 #include "common/common/macros.h"
 #include "common/common/utility.h"
 
@@ -38,7 +40,8 @@ XRayHeader parseXRayHeader(const Http::LowerCaseString& header) {
 } // namespace
 
 Driver::Driver(const XRayConfiguration& config, Server::Instance& server)
-    : xray_config_(config), tls_slot_ptr_(server.threadLocal().allocateSlot()) {
+    : xray_config_(config), tls_slot_ptr_(server.threadLocal().allocateSlot()),
+      rule_poller_(server.clusterManager().httpAsyncClientForCluster(config.collector_cluster_)) {
 
   const std::string daemon_endpoint =
       config.daemon_endpoint_.empty() ? DefaultDaemonEndpoint : config.daemon_endpoint_;
@@ -54,8 +57,25 @@ Driver::Driver(const XRayConfiguration& config, Server::Instance& server)
 
     DaemonBrokerPtr broker = std::make_unique<DaemonBrokerImpl>(daemon_endpoint);
     TracerPtr tracer = std::make_unique<Tracer>(span_name, std::move(broker), server.timeSource());
-    return std::make_shared<XRay::Driver::TlsTracer>(std::move(tracer), *this);
+    return std::make_shared<XRay::Driver::TlsTracer>(std::move(tracer));
   });
+
+  // TODO (marcomagdy): should the timeout be configurable?
+  static constexpr std::chrono::minutes polling_timeout(50);
+  auto onTimer = [self = this] {
+    auto onPollCompleted = [self](const std::string& payload) { self->onRulesFetched(payload); };
+    self->rule_poller_.poll(onPollCompleted);
+    self->rule_poller_timer_->enableTimer(polling_timeout);
+  };
+
+  rule_poller_timer_ = server.dispatcher().createTimer(onTimer);
+  rule_poller_timer_->enableTimer(polling_timeout);
+}
+
+Driver::~Driver() {
+  // even though we're single threaded, a timer could be already scheduled by the time this dtor is
+  // running. So, disable the timer to explicitly delete such events.
+  rule_poller_timer_->disableTimer();
 }
 
 Tracing::SpanPtr Driver::startSpan(const Tracing::Config& config, Http::HeaderMap& request_headers,
