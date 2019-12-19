@@ -3,6 +3,7 @@
 #include "envoy/common/time.h"
 #include "envoy/runtime/runtime.h"
 
+#include "common/common/lock_guard.h"
 #include "common/http/exception.h"
 #include "common/protobuf/utility.h"
 
@@ -25,9 +26,7 @@ void fail(absl::string_view msg) {
 }
 } // namespace
 
-CentralizedSamplingManifest::CentralizedSamplingManifest(TimeSource& time_source,
-                                                         const std::string& sampling_rules_json)
-    : time_source_(time_source) {
+CentralizedSamplingManifest::CentralizedSamplingManifest(const std::string& sampling_rules_json) {
 
   constexpr auto SamplingRuleRecordsJsonKey = "SamplingRuleRecords";
   // constexpr auto FixedRateJsonKey = "FixedRate";
@@ -85,6 +84,18 @@ CentralizedSamplingManifest::CentralizedSamplingManifest(TimeSource& time_source
     }
   }
 }
+
+bool CentralizedSamplingStrategy::shouldTrace(const SamplingRequest& sampling_request) {
+  (void)sampling_request;
+  // TODO: not implemented yet
+  return false;
+}
+
+void CentralizedSamplingStrategy::setManifest(const CentralizedSamplingManifest& manifest) {
+  Envoy::Thread::LockGuard lg(manifest_sync_);
+  manifest_.emplace(manifest);
+}
+
 } // namespace XRay
 } // namespace Tracers
 } // namespace Extensions

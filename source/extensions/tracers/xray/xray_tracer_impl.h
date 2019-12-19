@@ -7,6 +7,7 @@
 
 #include "common/tracing/http_tracer_impl.h"
 
+#include "extensions/tracers/xray/centralized_sampling.h"
 #include "extensions/tracers/xray/poller.h"
 #include "extensions/tracers/xray/tracer.h"
 #include "extensions/tracers/xray/xray_configuration.h"
@@ -35,6 +36,7 @@ private:
 
   XRayConfiguration xray_config_;
   SamplingStrategyPtr sampling_strategy_;
+  CentralizedSamplingStrategyPtr centralized_sampling_strategy_;
   ThreadLocal::SlotPtr tls_slot_ptr_;
   SamplingRulesPoller rule_poller_;
   Event::TimerPtr rule_poller_timer_;

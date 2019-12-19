@@ -1,7 +1,11 @@
 #pragma once
 
+#include <memory>
+
 #include "envoy/common/time.h"
 #include "envoy/runtime/runtime.h"
+
+#include "common/common/thread.h"
 
 #include "extensions/tracers/xray/localized_sampling.h"
 #include "extensions/tracers/xray/poller.h"
@@ -59,17 +63,9 @@ private:
 
 class CentralizedSamplingManifest {
 public:
-  explicit CentralizedSamplingManifest(TimeSource& time_source,
-                                       const std::string& sampling_rules_json);
-
-  /**
-   * Checks if the sampling information in the manifest is out of date.
-   */
-  bool isStale() const { return time_source_.monotonicTime() >= stale_at_; }
+  explicit CentralizedSamplingManifest(const std::string& sampling_rules_json);
 
 private:
-  Envoy::MonotonicTime stale_at_;
-  TimeSource& time_source_;
   std::vector<CentralizedSamplingRule> rules_;
 };
 
@@ -79,10 +75,8 @@ private:
 class CentralizedSamplingStrategy : public SamplingStrategy {
 public:
   CentralizedSamplingStrategy(const std::string& sampling_rules_json, Runtime::RandomGenerator& rng,
-                              SamplingRulesPollerPtr rules_poller, TimeSource& time_source)
-      : SamplingStrategy(rng), time_source_(time_source),
-        localized_strategy_(sampling_rules_json, rng, time_source),
-        rules_poller_(std::move(rules_poller)) {}
+                              TimeSource& time_source)
+      : SamplingStrategy(rng), localized_strategy_(sampling_rules_json, rng, time_source) {}
 
   /**
    * Determines if an incoming request matches one of the sampling rules in the manifest.
@@ -91,12 +85,15 @@ public:
    */
   bool shouldTrace(const SamplingRequest& sampling_request) override;
 
+  void setManifest(const CentralizedSamplingManifest& manifest);
+
 private:
-  TimeSource& time_source_;
   LocalizedSamplingStrategy localized_strategy_;
   absl::optional<CentralizedSamplingManifest> manifest_;
-  SamplingRulesPollerPtr rules_poller_;
+  mutable Envoy::Thread::MutexBasicLockable manifest_sync_;
 };
+
+using CentralizedSamplingStrategyPtr = std::unique_ptr<CentralizedSamplingStrategy>;
 
 } // namespace XRay
 } // namespace Tracers

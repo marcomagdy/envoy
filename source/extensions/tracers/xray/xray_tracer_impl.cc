@@ -46,14 +46,16 @@ std::string calculate_endpoint(const XRayConfiguration& config) {
 
 Driver::Driver(const XRayConfiguration& config, Server::Instance& server)
     : xray_config_(config), tls_slot_ptr_(server.threadLocal().allocateSlot()),
-      rule_poller_(calculate_endpoint(config), server.clusterManager().httpAsyncClientForCluster(
-                                             config.collector_cluster_)) {
+      rule_poller_(calculate_endpoint(config),
+                   server.clusterManager().httpAsyncClientForCluster(config.collector_cluster_)) {
 
   const std::string daemon_endpoint = calculate_endpoint(config);
 
   ENVOY_LOG(debug, "send X-Ray generated segments to daemon address on {}", daemon_endpoint);
   sampling_strategy_ = std::make_unique<XRay::LocalizedSamplingStrategy>(
       xray_config_.sampling_rules_, server.random(), server.timeSource());
+
+  // TODO(marcomagdy): create a centralized sampling here
 
   tls_slot_ptr_->set([this, daemon_endpoint,
                       &server](Event::Dispatcher&) -> ThreadLocal::ThreadLocalObjectSharedPtr {
@@ -81,6 +83,12 @@ Driver::~Driver() {
   // even though we're single threaded, a timer could be already scheduled by the time this dtor is
   // running. So, disable the timer to explicitly delete such events.
   rule_poller_timer_->disableTimer();
+}
+
+void Driver::onRulesFetched(const std::string& payload) {
+  if (centralized_sampling_strategy_) {
+    centralized_sampling_strategy_->setManifest(CentralizedSamplingManifest{payload});
+  }
 }
 
 Tracing::SpanPtr Driver::startSpan(const Tracing::Config& config, Http::HeaderMap& request_headers,
