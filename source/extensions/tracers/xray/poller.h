@@ -17,7 +17,7 @@ public:
   virtual ~Poller() = default;
 };
 
-class SamplingRulesPoller : public Poller, public Http::AsyncClient::Callbacks {
+class SamplingRulesPoller : public Poller {
 public:
   explicit SamplingRulesPoller(const std::string& endpoint, Http::AsyncClient& http_client)
       : endpoint_(endpoint), http_client_(http_client){};

@@ -37,14 +37,19 @@ XRayHeader parseXRayHeader(const Http::LowerCaseString& header) {
   }
   return result;
 }
+
+std::string calculate_endpoint(const XRayConfiguration& config) {
+  return config.daemon_endpoint_.empty() ? DefaultDaemonEndpoint : config.daemon_endpoint_;
+}
+
 } // namespace
 
 Driver::Driver(const XRayConfiguration& config, Server::Instance& server)
     : xray_config_(config), tls_slot_ptr_(server.threadLocal().allocateSlot()),
-      rule_poller_(server.clusterManager().httpAsyncClientForCluster(config.collector_cluster_)) {
+      rule_poller_(calculate_endpoint(config), server.clusterManager().httpAsyncClientForCluster(
+                                             config.collector_cluster_)) {
 
-  const std::string daemon_endpoint =
-      config.daemon_endpoint_.empty() ? DefaultDaemonEndpoint : config.daemon_endpoint_;
+  const std::string daemon_endpoint = calculate_endpoint(config);
 
   ENVOY_LOG(debug, "send X-Ray generated segments to daemon address on {}", daemon_endpoint);
   sampling_strategy_ = std::make_unique<XRay::LocalizedSamplingStrategy>(
