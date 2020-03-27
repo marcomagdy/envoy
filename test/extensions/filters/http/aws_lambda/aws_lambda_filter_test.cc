@@ -36,7 +36,7 @@ class AwsLambdaFilterTest : public ::testing::Test {
 public:
   void setupFilter(const FilterSettings& settings) {
     signer_ = std::make_shared<NiceMock<MockSigner>>();
-    filter_ = std::make_unique<Filter>(settings, signer_);
+    filter_ = std::make_unique<Filter>(settings, stats_, signer_);
     filter_->setDecoderFilterCallbacks(decoder_callbacks_);
     filter_->setEncoderFilterCallbacks(encoder_callbacks_);
     const std::string metadata_yaml = "egress_gateway: true";
@@ -52,6 +52,8 @@ public:
   NiceMock<Http::MockStreamDecoderFilterCallbacks> decoder_callbacks_;
   NiceMock<Http::MockStreamEncoderFilterCallbacks> encoder_callbacks_;
   envoy::config::core::v3::Metadata metadata_;
+  Stats::IsolatedStoreImpl stats_store_;
+  FilterStats stats_ = generateStats("test", stats_store_);
 };
 
 /**
@@ -62,6 +64,8 @@ TEST_F(AwsLambdaFilterTest, DecodingHeaderStopIteration) {
   Http::TestRequestHeaderMapImpl headers;
   const auto result = filter_->decodeHeaders(headers, false /*end_stream*/);
   EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
+
+  EXPECT_EQ(0ul, filter_->stats().invalid_arn_.value());
 }
 
 /**
@@ -88,6 +92,8 @@ TEST_F(AwsLambdaFilterTest, ConfigurationWithInvalidARN) {
   Http::TestRequestHeaderMapImpl headers;
   const auto result = filter_->decodeHeaders(headers, true /*end_stream*/);
   EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
+
+  EXPECT_EQ(1ul, filter_->stats().invalid_arn_.value());
 }
 
 /**
@@ -103,6 +109,8 @@ TEST_F(AwsLambdaFilterTest, PerRouteConfigWithInvalidARN) {
   Http::TestRequestHeaderMapImpl headers;
   const auto result = filter_->decodeHeaders(headers, true /*end_stream*/);
   EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
+
+  EXPECT_EQ(1ul, filter_->stats().invalid_arn_.value());
 }
 
 /**
@@ -566,6 +574,8 @@ TEST_F(AwsLambdaFilterTest, EncodeDataJsonModeBase64EncodedBody) {
   result = filter_->encodeData(encoded_buf, true /*end_stream*/);
   EXPECT_EQ(Http::FilterDataStatus::Continue, result);
   EXPECT_STREQ("Beans", encoded_buf.toString().c_str());
+
+  EXPECT_EQ(0ul, filter_->stats().server_error_.value());
 }
 
 /**
@@ -599,6 +609,8 @@ TEST_F(AwsLambdaFilterTest, EncodeDataJsonModeInvalidJson) {
 
   ASSERT_NE(nullptr, headers.Status());
   EXPECT_EQ("500", headers.Status()->value().getStringView());
+
+  EXPECT_EQ(1ul, filter_->stats().server_error_.value());
 }
 
 } // namespace

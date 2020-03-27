@@ -2,6 +2,8 @@
 
 #include "envoy/extensions/filters/http/aws_lambda/v3/aws_lambda.pb.validate.h"
 #include "envoy/registry/registry.h"
+#include "envoy/stats/scope.h"
+#include "envoy/stats/stats_macros.h"
 
 #include "common/common/fmt.h"
 
@@ -38,11 +40,12 @@ getInvocationMode(const envoy::extensions::filters::http::aws_lambda::v3::Config
     NOT_REACHED_GCOVR_EXCL_LINE;
   }
 }
+
 } // namespace
 
 Http::FilterFactoryCb AwsLambdaFilterFactory::createFilterFactoryFromProtoTyped(
     const envoy::extensions::filters::http::aws_lambda::v3::Config& proto_config,
-    const std::string&, Server::Configuration::FactoryContext& context) {
+    const std::string& stat_prefix, Server::Configuration::FactoryContext& context) {
 
   auto credentials_provider =
       std::make_shared<Extensions::Common::Aws::DefaultCredentialsProviderChain>(
@@ -55,8 +58,9 @@ Http::FilterFactoryCb AwsLambdaFilterFactory::createFilterFactoryFromProtoTyped(
   FilterSettings filter_settings{proto_config.arn(), getInvocationMode(proto_config),
                                  proto_config.payload_passthrough()};
 
-  return [signer, filter_settings](Http::FilterChainFactoryCallbacks& cb) {
-    auto filter = std::make_shared<Filter>(filter_settings, signer);
+  FilterStats stats = generateStats(stat_prefix, context.scope());
+  return [stats, signer, filter_settings](Http::FilterChainFactoryCallbacks& cb) {
+    auto filter = std::make_shared<Filter>(filter_settings, stats, signer);
     cb.addStreamFilter(filter);
   };
 }
@@ -69,6 +73,7 @@ AwsLambdaFilterFactory::createRouteSpecificFilterConfigTyped(
       proto_config.invoke_config().arn(), getInvocationMode(proto_config.invoke_config()),
       proto_config.invoke_config().payload_passthrough()});
 }
+
 /*
  * Static registration for the AWS Lambda filter. @see RegisterFactory.
  */
