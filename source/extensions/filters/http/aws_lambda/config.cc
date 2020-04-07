@@ -23,7 +23,7 @@ std::string extractRegionFromArn(absl::string_view arn) {
   if (parsed_arn.has_value()) {
     return parsed_arn->region();
   }
-  throw EnvoyException(fmt::format("Invalid ARN: {}", arn));
+  throw EnvoyException(fmt::format("aws_lambda_filter: Invalid ARN: {}", arn));
 }
 
 InvocationMode
@@ -69,6 +69,10 @@ Router::RouteSpecificFilterConfigConstSharedPtr
 AwsLambdaFilterFactory::createRouteSpecificFilterConfigTyped(
     const envoy::extensions::filters::http::aws_lambda::v3::PerRouteConfig& proto_config,
     Server::Configuration::ServerFactoryContext&, ProtobufMessage::ValidationVisitor&) {
+  if (!parseArn(proto_config.invoke_config().arn())) {
+    throw EnvoyException(
+        fmt::format("aws_lambda_filter: Invalid ARN: {}", proto_config.invoke_config().arn()));
+  }
   return std::make_shared<const FilterSettings>(FilterSettings{
       proto_config.invoke_config().arn(), getInvocationMode(proto_config.invoke_config()),
       proto_config.invoke_config().payload_passthrough()});

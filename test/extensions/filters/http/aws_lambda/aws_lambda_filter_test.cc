@@ -64,8 +64,6 @@ TEST_F(AwsLambdaFilterTest, DecodingHeaderStopIteration) {
   Http::TestRequestHeaderMapImpl headers;
   const auto result = filter_->decodeHeaders(headers, false /*end_stream*/);
   EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
-
-  EXPECT_EQ(0ul, filter_->stats().invalid_arn_.value());
 }
 
 /**
@@ -81,36 +79,6 @@ TEST_F(AwsLambdaFilterTest, HeaderOnlyShouldContinue) {
   Http::TestResponseHeaderMapImpl response_headers;
   const auto encode_result = filter_->encodeHeaders(response_headers, true /*end_stream*/);
   EXPECT_EQ(Http::FilterHeadersStatus::Continue, encode_result);
-}
-
-/**
- * If the filter is configured with an invalid ARN, then we stop.
- */
-TEST_F(AwsLambdaFilterTest, ConfigurationWithInvalidARN) {
-  setupFilter({"BadARN", InvocationMode::Synchronous, true /*passthrough*/});
-  EXPECT_CALL(decoder_callbacks_, sendLocalReply);
-  Http::TestRequestHeaderMapImpl headers;
-  const auto result = filter_->decodeHeaders(headers, true /*end_stream*/);
-  EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
-
-  EXPECT_EQ(1ul, filter_->stats().invalid_arn_.value());
-}
-
-/**
- * If there's a per-route configuration with an invalid ARN, then we stop.
- */
-TEST_F(AwsLambdaFilterTest, PerRouteConfigWithInvalidARN) {
-  setupFilter({Arn, InvocationMode::Synchronous, true /*passthrough*/});
-  FilterSettings route_settings{"BadARN", InvocationMode::Synchronous, true /*passthrough*/};
-  ON_CALL(decoder_callbacks_.route_->route_entry_,
-          perFilterConfig(HttpFilterNames::get().AwsLambda))
-      .WillByDefault(Return(&route_settings));
-  EXPECT_CALL(decoder_callbacks_, sendLocalReply);
-  Http::TestRequestHeaderMapImpl headers;
-  const auto result = filter_->decodeHeaders(headers, true /*end_stream*/);
-  EXPECT_EQ(Http::FilterHeadersStatus::StopIteration, result);
-
-  EXPECT_EQ(1ul, filter_->stats().invalid_arn_.value());
 }
 
 /**

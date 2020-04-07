@@ -59,7 +59,6 @@ absl::optional<Arn> parseArn(absl::string_view arn);
  */
 // clang-format off
 #define ALL_AWS_LAMBDA_FILTER_STATS(COUNTER)  \
-  COUNTER(invalid_arn)                        \
   COUNTER(server_error)                       \
 // clang-format on
 

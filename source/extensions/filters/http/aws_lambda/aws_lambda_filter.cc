@@ -136,16 +136,13 @@ absl::optional<FilterSettings> Filter::getRouteSpecificSettings() const {
 
 std::string Filter::resolveSettings() {
   if (auto route_settings = getRouteSpecificSettings()) {
-    if (auto route_arn = parseArn(route_settings->arn())) {
-      arn_.swap(route_arn);
-      payload_passthrough_ = route_settings->payloadPassthrough();
-      invocation_mode_ = route_settings->invocationMode();
-    } else {
-      stats().invalid_arn_.inc();
-      ENVOY_LOG(debug, "Found route specific configuration but failed to parse Lambda ARN {}.",
-                route_settings->arn());
-      return "Invalid AWS Lambda ARN";
-    }
+    auto route_arn = parseArn(route_settings->arn());
+    // The ARN should always be valid. If the ARN is invalid, the filter factory throws an
+    // exception (effectively NACK-ing the configuration when coming from xDS).
+    RELEASE_ASSERT(route_arn.has_value(), "aws_lambda_filter: Invalid route-specific Lambda ARN");
+    arn_.swap(route_arn);
+    payload_passthrough_ = route_settings->payloadPassthrough();
+    invocation_mode_ = route_settings->invocationMode();
   } else {
     payload_passthrough_ = settings_.payloadPassthrough();
     invocation_mode_ = settings_.invocationMode();
@@ -172,15 +169,9 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
 
   if (!arn_) {
     arn_ = parseArn(settings_.arn());
-    if (!arn_.has_value()) {
-      ENVOY_LOG(error, "Failed to parse Lambda ARN {}.", settings_.arn());
-      stats().invalid_arn_.inc();
-      skip_ = true;
-      decoder_callbacks_->sendLocalReply(Http::Code::BadRequest, "Invalid AWS Lambda ARN",
-                                         nullptr /*modify_headers*/, absl::nullopt /*grpc_status*/,
-                                         "" /*details*/);
-      return Http::FilterHeadersStatus::StopIteration;
-    }
+    // The ARN should always be valid. If the ARN is invalid, the filter factory throws an exception
+    // (effectively NACK-ing the configuration when coming from xDS).
+    RELEASE_ASSERT(arn_.has_value(), "aws_lambda_filter: Invalid Lambda ARN");
   }
 
   if (!end_stream) {
@@ -206,7 +197,7 @@ Http::FilterHeadersStatus Filter::decodeHeaders(Http::RequestHeaderMap& headers,
   sigv4_signer_->sign(headers, hash);
   decoder_callbacks_->addDecodedData(json_buf, false);
   return Http::FilterHeadersStatus::Continue;
-}
+} // namespace AwsLambdaFilter
 
 Http::FilterHeadersStatus Filter::encodeHeaders(Http::ResponseHeaderMap& headers, bool end_stream) {
   if (skip_ || end_stream) {
