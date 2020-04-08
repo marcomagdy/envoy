@@ -252,6 +252,7 @@ Http::FilterDataStatus Filter::decodeData(Buffer::Instance& data, bool end_strea
   setLambdaHeaders(*request_headers_, arn_->functionName(), invocation_mode_);
   const auto hash = Hex::encode(hashing_util.getSha256Digest(decoding_buffer));
   sigv4_signer_->sign(*request_headers_, hash);
+  stats().upstream_rq_payload_size_.recordValue(decoding_buffer.length());
   return Http::FilterDataStatus::Continue;
 }
 
@@ -409,7 +410,8 @@ absl::optional<Arn> parseArn(absl::string_view arn) {
 
 FilterStats generateStats(const std::string& prefix, Stats::Scope& scope) {
   const std::string final_prefix = prefix + "aws_lambda.";
-  return {ALL_AWS_LAMBDA_FILTER_STATS(POOL_COUNTER_PREFIX(scope, final_prefix))};
+  return {ALL_AWS_LAMBDA_FILTER_STATS(POOL_COUNTER_PREFIX(scope, final_prefix),
+                                      POOL_HISTOGRAM_PREFIX(scope, final_prefix))};
 }
 
 } // namespace AwsLambdaFilter

@@ -58,15 +58,16 @@ absl::optional<Arn> parseArn(absl::string_view arn);
  * All stats for the AWS Lambda filter. @see stats_macros.h
  */
 // clang-format off
-#define ALL_AWS_LAMBDA_FILTER_STATS(COUNTER)  \
-  COUNTER(server_error)                       \
+#define ALL_AWS_LAMBDA_FILTER_STATS(COUNTER, HISTOGRAM)  \
+  COUNTER(server_error)                                  \
+  HISTOGRAM(upstream_rq_payload_size, Bytes)
 // clang-format on
 
 /**
  * Wrapper struct filter stats. @see stats_macros.h
  */
 struct FilterStats {
-  ALL_AWS_LAMBDA_FILTER_STATS(GENERATE_COUNTER_STRUCT)
+  ALL_AWS_LAMBDA_FILTER_STATS(GENERATE_COUNTER_STRUCT, GENERATE_HISTOGRAM_STRUCT)
 };
 
 FilterStats generateStats(const std::string& prefix, Stats::Scope& scope);

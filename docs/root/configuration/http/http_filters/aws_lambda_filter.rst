@@ -195,4 +195,5 @@ comes from the owning HTTP connection manager.
   :widths: 1, 1, 2
 
   server_error, Counter, Total requests that returned invalid JSON response (see :ref:`payload_passthrough <envoy_api_msg_config.filter.http.aws_lambda.v2alpha.config>`)
+  upstream_rq_payload_size, Histogram, Size in bytes of the request after JSON-tranformation (if any).
 
